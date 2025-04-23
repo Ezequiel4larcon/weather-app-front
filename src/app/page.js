@@ -1,102 +1,130 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import SearchBar from './components/SearchBar';
+import WeatherInfo from './components/WeatherInfo';
+import MusicRecommendations from './components/MusicRecommendations';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const LAST_CITY_KEY = 'lastSearchedCity';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [city, setCity] = useState('');
+  const [weatherData, setWeatherData] = useState(null);
+  const [musicRecommendations, setMusicRecommendations] = useState(null);
+  const [loadingWeather, setLoadingWeather] = useState(false);
+  const [loadingMusic, setLoadingMusic] = useState(false);
+  const [error, setError] = useState(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  useEffect(() => {
+    const lastCity = localStorage.getItem(LAST_CITY_KEY);
+    if (lastCity) {
+      setCity(lastCity);
+      handleSearch(lastCity);
+    }
+  }, []);
+
+  const handleSearch = async (searchedCity) => {
+    setCity(searchedCity);
+    localStorage.setItem(LAST_CITY_KEY, searchedCity);
+    setWeatherData(null);
+    setMusicRecommendations(null);
+    setError(null);
+    setLoadingWeather(true);
+    setLoadingMusic(true);
+
+    try {
+      const weatherResponse = await fetch(
+        `https://weatherbeats.onrender.com/weather/current?city=${encodeURIComponent(searchedCity)}`
+      );
+      const weatherResult = await weatherResponse.json();
+      setWeatherData(weatherResult);
+      setLoadingWeather(false);
+
+      if (!weatherResult.error) {
+        const musicResponse = await fetch(
+          `https://weatherbeats.onrender.com/weather/music-recommendation?city=${encodeURIComponent(searchedCity)}`
+        );
+        const musicResult = await musicResponse.json();
+        setMusicRecommendations(musicResult);
+        setLoadingMusic(false);
+      } else {
+        setLoadingMusic(false);
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('There was an error fetching the data.');
+      setLoadingWeather(false);
+      setLoadingMusic(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen py-4 sm:py-8 bg-gray-100"> {/* Fondo gris claro */}
+      <main className="flex flex-col items-center w-full flex-1 px-4 sm:px-20 text-center">
+        <motion.h1
+          className="text-3xl sm:text-4xl font-bold text-indigo-600 mb-4" // Acento azul/índigo sutil
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          Weather<span className="text-gray-700">Beats</span>
+        </motion.h1>
+
+        <SearchBar onSearch={handleSearch} />
+
+        <AnimatePresence>
+          {loadingWeather && (
+            <motion.p
+              className="mt-4 text-gray-600"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              Loading weather information...
+            </motion.p>
+          )}
+          {weatherData && (
+            <WeatherInfo weatherData={weatherData} />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {loadingMusic && (
+            <motion.p
+              className="mt-4 text-gray-600"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              Loading music recommendations...
+            </motion.p>
+          )}
+          {musicRecommendations && (
+            <MusicRecommendations recommendations={musicRecommendations} />
+          )}
+        </AnimatePresence>
+
+        {error && (
+          <motion.p
+            className="mt-4 text-red-500"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+            {error}
+          </motion.p>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      <footer className="flex items-center justify-center w-full h-10 sm:h-12 border-t mt-6 bg-gray-200" // Fondo gris ligeramente más oscuro
+      >
+        <p className="text-gray-600 text-xs sm:text-sm">
+          Developed with Next.js and Tailwind CSS
+        </p>
       </footer>
     </div>
   );
